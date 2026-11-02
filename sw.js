@@ -1,6 +1,6 @@
 // Кеш файлів сайту, щоб він відкривався без інтернету.
 // Збільшуй VERSION після кожної зміни файлів, щоб телефон підтягнув нову версію.
-const VERSION = "v1";
+const VERSION = "v2";
 const FILES = ["./", "index.html", "css/style.css", "js/app.js", "js/backend.js", "js/srs.js", "js/tts.js",
   "js/firebase-config.js", "data/words.json", "manifest.webmanifest", "icons/icon-180.png", "icons/icon-192.png"];
 
