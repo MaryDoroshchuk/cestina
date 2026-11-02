@@ -100,3 +100,56 @@ select { font: inherit; padding: 4px 8px; border-radius: 8px; }
 .mist { width: 100%; max-width: 420px; text-align: left; background: var(--card); border-radius: 16px; padding: 14px 16px; }
 .center .btn { max-width: 420px; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: 90vw; z-index: 10; }
+
+/* ---------- режими ---------- */
+.prompt { text-align: center; background: var(--card); border-radius: 24px; box-shadow: var(--shadow); padding: 28px 20px; margin-top: 8px; }
+.prompt .word { margin-top: 6px; }
+.options { display: grid; gap: 10px; margin-top: 16px; }
+.opt { text-align: left; font-weight: 500; }
+.opt.cz { color: var(--blue); font-weight: 600; }
+.opt kbd { margin: 0 8px 0 0; }
+.opt.right { background: var(--good); border-color: var(--good); color: #fff; opacity: 1; }
+.opt.wrong { background: var(--bad); border-color: var(--bad); color: #fff; opacity: 1; }
+.reveal { text-align: center; background: var(--card); border-radius: 20px; padding: 18px; margin: 14px 0 12px; border: 1px solid var(--line); }
+.reveal .word { font-size: 26px; }
+.inp {
+  width: 100%; font: inherit; font-size: 22px; padding: 14px 16px; border-radius: 14px; border: 2px solid var(--line);
+  background: var(--card); color: var(--fg); margin-top: 16px; outline: none;
+}
+.inp:focus { border-color: var(--blue); }
+.letters { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-top: 10px; }
+.ltr { font: inherit; font-size: 18px; padding: 8px 0; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; touch-action: manipulation; }
+.ltr:active { background: var(--line); }
+.row2 { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 12px; }
+.locked .letters, .locked .row2 { display: none; }
+.verdict { text-align: center; font-weight: 800; font-size: 20px; margin-top: 16px; }
+.verdict.good { color: var(--good); } .verdict.bad { color: var(--bad); }
+.diff { text-align: center; margin-top: 8px; }
+.diff .word { font-size: 26px; letter-spacing: .02em; }
+.diff .ok { color: var(--good); } .diff .no { color: var(--bad); text-decoration: underline; }
+.listen { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 12px; }
+.say.big { width: 84px; height: 84px; font-size: 38px; margin: 0; }
+.btn.slim { width: auto; padding: 10px 14px; font-size: 15px; }
+.answers + .reveal, .wide { width: 100%; }
+
+/* ---------- знайди пару ---------- */
+.match {
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 8px; padding: 4px 12px 12px;
+  height: calc(100dvh - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+.col { display: grid; gap: 8px; grid-auto-rows: minmax(0, 1fr); max-height: 100%; }
+.tile {
+  font: inherit; font-size: 15px; line-height: 1.2; min-height: 0; padding: 4px 8px; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; touch-action: manipulation;
+  transition: opacity .25s, transform .15s, background .15s; overflow-wrap: anywhere;
+}
+.tile.cz { color: var(--blue); font-weight: 600; }
+.match.dense .tile { min-height: 0; font-size: 12px; line-height: 1.05; padding: 0 4px; border-radius: 10px; }
+.match.dense .col { gap: 5px; }
+.tile.sel { background: var(--blue); color: #fff; border-color: var(--blue); }
+.tile.gone { opacity: 0; transform: scale(.9); pointer-events: none; }
+.tile.shake { background: var(--bad); color: #fff; animation: shake .35s; }
+@keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.timer i { background: var(--accent); transition: none; }
+.mono { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 24px; text-align: right; }
+.seg button[disabled] { opacity: .35; }

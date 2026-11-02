@@ -1,6 +1,7 @@
 import { createBackend, isDemo } from "./backend.js";
 import { today, addDays, keyOf, review, againToday, status, DIRS } from "./srs.js";
-import { speak } from "./tts.js";
+import * as Modes from "./modes.js";
+import { matchSetup, matchGame } from "./match.js";
 
 const $app = document.getElementById("app");
 const S = { be: null, user: null, profile: null, progress: {}, words: [], weeks: [], byId: {}, day: {} };
@@ -148,8 +149,9 @@ function showWeek(week) {
   const { topic } = S.weeks.find(w => w.week === week);
   const ws = S.words.filter(w => w.week === week);
   const modes = [
-    ["cards", "Картки", true], ["quiz", "Тест з варіантами", false], ["type", "Написання", false],
-    ["audio", "Аудіо", false], ["match", "Знайди пару", false]
+    ["cards", "Картки", "з перевертанням"], ["quiz", "Тест з варіантами", "4 варіанти"],
+    ["type", "Написання", "бачиш переклад, пишеш чеською"], ["audio", "Аудіо", "чуєш слово, пишеш його"],
+    ["match", "Знайди пару", "на час"]
   ];
   render(`
     <header class="top"><button class="icon" id="back">←</button><h2>Тиждень ${week}</h2><span></span></header>
@@ -158,7 +160,8 @@ function showWeek(week) {
       <div class="seg" id="dir">
         <button data-d="r" class="on">CZ → UA</button><button data-d="p">UA → CZ</button><button data-d="mix">Мікс</button>
       </div>
-      ${modes.map(([m, label, ok]) => `<button class="btn mode" data-m="${m}" ${ok ? "" : "disabled"}>${label}${ok ? "" : ' <span class="soon">незабаром</span>'}</button>`).join("")}
+      <p class="muted small">Напрямок діє для карток і тесту.</p>
+      ${modes.map(([m, label, sub]) => `<button class="btn mode" data-m="${m}">${label}<span class="soon">${sub}</span></button>`).join("")}
       <details><summary>Список слів</summary>
         <ul class="list">${ws.map(w => `<li><b>${esc(w.cz)}</b> — ${esc(w.ua)}</li>`).join("")}</ul>
       </details>
@@ -169,26 +172,79 @@ function showWeek(week) {
     document.querySelectorAll("#dir button").forEach(x => x.classList.toggle("on", x === b));
   }));
   document.getElementById("back").onclick = showHome;
-  document.querySelectorAll(".mode:not([disabled])").forEach(b => (b.onclick = () => {
-    const q = shuffle(ws.map(w => ({ id: w.id, dir: dir === "mix" ? (Math.random() < 0.5 ? "r" : "p") : dir })));
-    runSession(q, { title: `Тиждень ${week}`, back: () => showWeek(week) });
+  const back = () => showWeek(week);
+  document.querySelectorAll(".mode").forEach(b => (b.onclick = () => {
+    const m = b.dataset.m;
+    if (m === "match") return showMatch(`w${String(week).padStart(2, "0")}`, `Тиждень ${week}`, ws, back);
+    const d = m === "type" ? () => "p" : m === "audio" ? () => "r" : () => (dir === "mix" ? (Math.random() < 0.5 ? "r" : "p") : dir);
+    const q = shuffle(ws.map(w => ({ id: w.id, dir: d(), mode: m })));
+    runSession(q, { title: `Тиждень ${week}`, back });
   }));
+}
+
+async function showMatch(setId, title, words, back) {
+  render(`<div class="center muted">Завантаження…</div>`);
+  const record = (await S.be.loadRecord(S.user, setId).catch(() => null)) || {};
+  const setup = () => matchSetup({
+    render, words, title, record, onBack: back,
+    onPlay: ({ pairs, secs }) => matchGame({
+      render, words, pairs, secs, record, onBack: setup,
+      onDone: ({ isRecord, time }) => {
+        if (!isRecord) return;
+        record[`p${pairs}`] = time;
+        S.be.saveRecord(S.user, setId, { [`p${pairs}`]: time }).catch(fail);
+      }
+    })
+  });
+  setup();
 }
 
 // ---------- session ----------
 function runSession(queue, opts) {
   const t = today();
+  const pool = S.words;
   const sess = { queue: [...queue], done: 0, right: 0, mistakes: new Map() };
+  let keyHandler = null;
+  const onKey = e => keyHandler && keyHandler(e);
+  document.addEventListener("keydown", onKey);
+  const cleanup = () => { document.removeEventListener("keydown", onKey); keyHandler = null; };
+
   const next = () => {
     if (!sess.queue.length) return finish();
-    showCard(sess.queue[0]);
+    const item = sess.queue[0];
+    const key = keyOf(item.id, item.dir);
+    const mode = item.mode || Modes.pickMode(item, S.progress[key]);
+    const w = S.byId[item.id];
+    const weekPool = pool.filter(x => x.week === w.week);
+    let answered = false;
+    keyHandler = null;
+    Modes[mode]({
+      w, item, pool: weekPool.length >= 8 ? weekPool : pool,
+      mount(body) {
+        const total = sess.done + sess.queue.length;
+        render(`
+          <header class="top">
+            <button class="icon" id="close" aria-label="Закрити">✕</button>
+            <div class="prog"><i style="width:${(100 * sess.done) / total}%"></i></div>
+            <span class="small muted">${sess.done}/${total}</span>
+          </header>
+          <div class="pad">${body}</div>`);
+        document.getElementById("close").onclick = () => { cleanup(); (opts.back || showHome)(); };
+      },
+      keys(fn) { keyHandler = fn; },
+      answer(grade, o = {}) {
+        if (answered) return;
+        answered = true;
+        answer(item, grade, o);
+      }
+    });
   };
 
-  function answer(item, grade) {
+  function answer(item, grade, { stepCap } = {}) {
     sess.queue.shift();
     const key = keyOf(item.id, item.dir);
     const wasNew = !S.progress[key];
-    const st = review(S.progress[key], grade, { day: t });
+    const st = review(S.progress[key], grade, { day: t, stepCap });
     S.progress[key] = st;
     S.be.saveProgress(S.user, key, st).catch(fail);
     const delta = { answers: 1, correct: grade > 0 ? 1 : 0 };
@@ -196,76 +252,10 @@ function runSession(queue, opts) {
     S.be.logDay(S.user, t, delta).catch(fail);
     sess.done++;
     if (grade > 0) sess.right++; else sess.mistakes.set(key, item);
-    if (againToday(st)) sess.queue.splice(Math.min(3, sess.queue.length), 0, { ...item, isNew: false });
+    // у вільному тренуванні режим фіксований; у щоденній сесії повтор піде іншим режимом
+    if (againToday(st)) sess.queue.splice(Math.min(3, sess.queue.length), 0, { id: item.id, dir: item.dir, mode: item.mode });
     next();
   }
-
-  function showCard(item) {
-    const w = S.byId[item.id];
-    const czFront = item.dir === DIRS.R;
-    const total = sess.done + sess.queue.length;
-    render(`
-      <header class="top">
-        <button class="icon" id="close" aria-label="Закрити">✕</button>
-        <div class="prog"><i style="width:${(100 * sess.done) / total}%"></i></div>
-        <span class="small muted">${sess.done}/${total}</span>
-      </header>
-      <div class="pad">
-        ${item.isNew ? `<div class="tag">Нове слово</div>` : ""}
-        <div class="card" id="card" tabindex="0">
-          <div class="face front">
-            <div class="word ${czFront ? "cz" : ""}">${esc(czFront ? w.cz : w.ua)}</div>
-            ${czFront ? `<button class="say" data-say>🔊</button>` : ""}
-            <div class="tap muted small">Торкнись, щоб перевернути</div>
-          </div>
-          <div class="face back">
-            <div class="word cz">${esc(w.cz)} <button class="say" data-say>🔊</button></div>
-            <div class="pron">[${esc(w.pron)}]</div>
-            <div class="tr">${esc(w.ua)}</div>
-            ${w.note ? `<div class="note">${esc(w.note)}</div>` : ""}
-          </div>
-        </div>
-        <div class="answers" id="answers">
-          <button class="btn wide" id="flip">Показати <kbd>пробіл</kbd></button>
-        </div>
-      </div>`);
-    const card = document.getElementById("card");
-    let flipped = false;
-    const grades = () => {
-      document.getElementById("answers").innerHTML = `
-        <button class="btn bad" data-g="0">Не знаю <kbd>1</kbd></button>
-        <button class="btn mid" data-g="1">Важко <kbd>2</kbd></button>
-        <button class="btn good" data-g="2">Знаю <kbd>3</kbd></button>`;
-      document.querySelectorAll("[data-g]").forEach(b => (b.onclick = () => answer(item, +b.dataset.g)));
-    };
-    const flip = () => {
-      if (flipped) return;
-      flipped = true; card.classList.add("flipped"); grades();
-      if (!czFront) speak(w.cz);
-    };
-    card.onclick = e => { if (e.target.closest("[data-say]")) { e.stopPropagation(); speak(w.cz); return; } flip(); };
-    document.getElementById("flip").onclick = flip;
-    document.getElementById("close").onclick = () => { cleanup(); (opts.back || showHome)(); };
-    // свайпи
-    let x0 = null;
-    card.ontouchstart = e => (x0 = e.touches[0].clientX);
-    card.ontouchend = e => {
-      if (x0 === null) return;
-      const dx = e.changedTouches[0].clientX - x0; x0 = null;
-      if (!flipped || Math.abs(dx) < 60) return;
-      answer(item, dx > 0 ? 2 : 0);
-    };
-    if (czFront && item.isNew) speak(w.cz);
-    keyHandler = e => {
-      if (e.key === " ") { e.preventDefault(); flip(); }
-      else if (flipped && ["1", "2", "3"].includes(e.key)) answer(item, +e.key - 1);
-    };
-  }
-
-  let keyHandler = null;
-  const onKey = e => keyHandler && keyHandler(e);
-  document.addEventListener("keydown", onKey);
-  const cleanup = () => document.removeEventListener("keydown", onKey);
 
   async function finish() {
     cleanup();
@@ -283,7 +273,7 @@ function runSession(queue, opts) {
       </div>`);
     document.getElementById("home").onclick = showHome;
     const again = document.getElementById("again");
-    if (again) again.onclick = () => runSession(shuffle(mistakes.map(m => ({ id: m.id, dir: m.dir }))), { title: "Помилки", back: opts.back });
+    if (again) again.onclick = () => runSession(shuffle(mistakes.map(m => ({ id: m.id, dir: m.dir, mode: m.mode }))), { title: "Помилки", back: opts.back });
   }
 
   next();

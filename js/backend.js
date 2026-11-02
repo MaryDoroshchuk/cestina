@@ -2,7 +2,7 @@
 import { firebaseConfig } from "./firebase-config.js";
 
 const FB = "https://www.gstatic.com/firebasejs/10.12.2/";
-export const isDemo = !firebaseConfig.apiKey;
+export const isDemo = !firebaseConfig.apiKey || new URLSearchParams(location.search).has("demo");
 
 function bucketOf(key) { return "w" + key.slice(0, 2); }
 
@@ -58,6 +58,13 @@ async function firebaseBackend() {
       const patch = {};
       for (const [k, v] of Object.entries(delta)) patch[k] = typeof v === "number" ? F.increment(v) : v;
       return F.setDoc(F.doc(db, "users", user.uid, "days", date), patch, { merge: true });
+    },
+    async loadRecord(user, setId) {
+      const s = await F.getDoc(F.doc(db, "users", user.uid, "records", setId));
+      return s.exists() ? s.data() : {};
+    },
+    saveRecord(user, setId, patch) {
+      return F.setDoc(F.doc(db, "users", user.uid, "records", setId), patch, { merge: true });
     }
   };
 }
@@ -83,7 +90,9 @@ function demoBackend() {
       const s = read(); const day = ((s.days ||= {})[d] ||= {});
       for (const [k, v] of Object.entries(delta)) day[k] = typeof v === "number" ? (day[k] || 0) + v : v;
       write(s);
-    }
+    },
+    async loadRecord(_, id) { return (read().records || {})[id] || {}; },
+    async saveRecord(_, id, p) { const s = read(); (s.records ||= {})[id] = { ...((s.records || {})[id] || {}), ...p }; write(s); }
   };
 }
 

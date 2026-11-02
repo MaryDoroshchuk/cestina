@@ -1,7 +1,7 @@
 // Кеш файлів сайту, щоб він відкривався без інтернету.
 // Збільшуй VERSION після кожної зміни файлів, щоб телефон підтягнув нову версію.
-const VERSION = "v2";
-const FILES = ["./", "index.html", "css/style.css", "js/app.js", "js/backend.js", "js/srs.js", "js/tts.js",
+const VERSION = "v3";
+const FILES = ["./", "index.html", "css/style.css", "js/app.js", "js/backend.js", "js/srs.js", "js/tts.js", "js/modes.js", "js/match.js",
   "js/firebase-config.js", "data/words.json", "manifest.webmanifest", "icons/icon-180.png", "icons/icon-192.png"];
 
 self.addEventListener("install", e => e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));
