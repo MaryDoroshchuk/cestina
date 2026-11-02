@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Користувач увійшов і його email є в allowedEmails
+    function allowed() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/allowedEmails/$(request.auth.token.email));
+    }
+
+    // Список дозволених: кожен може перевірити лише себе; редагує тільки власниця в консолі Firebase
+    match /allowedEmails/{email} {
+      allow read: if request.auth != null && request.auth.token.email == email;
+      allow write: if false;
+    }
+
+    // Профіль, прогрес, дні — лише свої
+    match /users/{uid}/{document=**} {
+      allow read, write: if allowed() && request.auth.uid == uid;
+    }
+
+    // Власні набори: публічні читають усі допущені, змінює лише автор
+    match /sets/{setId} {
+      allow read: if allowed() && (resource.data.public == true || resource.data.owner == request.auth.uid);
+      allow create: if allowed() && request.resource.data.owner == request.auth.uid;
+      allow update: if allowed() && resource.data.owner == request.auth.uid
+        && request.resource.data.owner == request.auth.uid;
+      allow delete: if allowed() && resource.data.owner == request.auth.uid;
+    }
+  }
+}
