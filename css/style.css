@@ -153,3 +153,5 @@ select { font: inherit; padding: 4px 8px; border-radius: 8px; }
 .timer i { background: var(--accent); transition: none; }
 .mono { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 24px; text-align: right; }
 .seg button[disabled] { opacity: .35; }
+
+#kbproxy { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; font-size: 16px; pointer-events: none; }

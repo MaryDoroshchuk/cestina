@@ -5,6 +5,8 @@ import { matchSetup, matchGame } from "./match.js";
 
 const $app = document.getElementById("app");
 const S = { be: null, user: null, profile: null, progress: {}, words: [], weeks: [], byId: {}, day: {} };
+const kbProxy = document.getElementById("kbproxy");
+const KB_MODES = ["type", "audio"];
 const DEFAULTS = { newPerDay: 7, streak: 0, best: 0, lastDay: null };
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -209,18 +211,27 @@ function runSession(queue, opts) {
   document.addEventListener("keydown", onKey);
   const cleanup = () => { document.removeEventListener("keydown", onKey); keyHandler = null; };
 
+  // режим кожного слова визначаємо один раз, щоб можна було «заглянути» на наступне
+  const modeOf = it => it.mode || it._m || (it._m = Modes.pickMode(it, S.progress[keyOf(it.id, it.dir)]));
   const next = () => {
-    if (!sess.queue.length) return finish();
+    if (!sess.queue.length) { if (document.activeElement === kbProxy) kbProxy.blur(); return finish(); }
     const item = sess.queue[0];
     const key = keyOf(item.id, item.dir);
-    const mode = item.mode || Modes.pickMode(item, S.progress[key]);
+    const mode = modeOf(item);
     const w = S.byId[item.id];
     const weekPool = pool.filter(x => x.week === w.week);
     let answered = false;
     keyHandler = null;
     Modes[mode]({
       w, item, pool: weekPool.length >= 8 ? weekPool : pool,
+      prepKeyboard() {
+        const n = sess.queue[1];
+        if (n && KB_MODES.includes(modeOf(n))) kbProxy.focus({ preventScroll: true });
+      },
       mount(body) {
+        // клавіатура відкрита? передаємо фокус «тримачу», щоб вона не сховалася під час перемальовування
+        const ae = document.activeElement;
+        if (ae && ae.tagName === "INPUT" && ae !== kbProxy) kbProxy.focus({ preventScroll: true });
         const total = sess.done + sess.queue.length;
         render(`
           <header class="top">
@@ -238,6 +249,7 @@ function runSession(queue, opts) {
         answer(item, grade, o);
       }
     });
+    if (document.activeElement === kbProxy && !KB_MODES.includes(mode)) kbProxy.blur();
   };
 
   function answer(item, grade, { stepCap } = {}) {

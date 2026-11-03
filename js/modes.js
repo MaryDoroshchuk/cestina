@@ -133,7 +133,8 @@ export function quiz(ctx) {
     });
     if (!czPrompt || !right) speak(w.cz);
     const go = () => ctx.answer(right ? 2 : 0, { stepCap: 3 });
-    if (right) { setTimeout(go, 700); return; }
+    // якщо далі буде написання, відкриваємо клавіатуру зараз, поки це ще відповідь на дотик
+    if (right) { ctx.prepKeyboard(); setTimeout(go, 700); return; }
     $("after").innerHTML = `${reveal(w)}<button class="btn primary wide" id="next">Далі <kbd>Enter</kbd></button>`;
     bindSay($("after"), w);
     $("next").onclick = go;
@@ -176,13 +177,16 @@ function typing(ctx, { audio }) {
       inp.setSelectionRange(s + 1, s + 1); inp.focus();
     };
   });
-  setTimeout(() => inp.focus(), 50);
-  let done = false;
+  // фокус одразу, у тому ж дотику, що й перехід, — тоді iOS не ховає клавіатуру
+  inp.focus({ preventScroll: true });
+  setTimeout(() => { if (document.activeElement !== inp && !done) inp.focus({ preventScroll: true }); }, 50);
+  let done = false, lastGrade = 0;
   const check = given => {
     if (done) return; done = true;
     const typed = norm(given);
     const right = typed !== "" && acceptable(w.cz).has(typed);
-    $("f").classList.add("locked"); inp.disabled = true;
+    // поле лишається у фокусі (лише для читання), щоб клавіатура не закривалась; Enter = «Далі»
+    $("f").classList.add("locked"); inp.readOnly = true;
     $("after").innerHTML = `
       <div class="verdict ${right ? "good" : "bad"}">${right ? "Правильно" : typed ? "Помилка" : "Правильна відповідь"}</div>
       ${!right && typed ? `<div class="diff"><div class="muted small">Ти написала: ${esc(given.trim())}</div><div class="word">${diffHtml(typed, norm(w.cz))}</div></div>` : ""}
@@ -190,13 +194,17 @@ function typing(ctx, { audio }) {
       <button class="btn primary wide" id="next">Далі <kbd>Enter</kbd></button>`;
     bindSay($("after"), w);
     if (!audio || !right) speak(w.cz);
-    const go = () => ctx.answer(right ? 2 : 0);
+    lastGrade = right ? 2 : 0;
+    const go = () => ctx.answer(lastGrade);
     $("next").onclick = go;
-    $("next").focus();
-    ctx.keys(e => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+    $("next").onmousedown = e => e.preventDefault();
+    inp.focus({ preventScroll: true });
+    ctx.keys(e => { if (e.key === "Enter" && document.activeElement !== inp) { e.preventDefault(); go(); } });
   };
-  $("f").onsubmit = e => { e.preventDefault(); check(inp.value); };
+  $("f").onsubmit = e => { e.preventDefault(); if (done) ctx.answer(lastGrade); else check(inp.value); };
   $("skip").onclick = () => check("");
+  // кнопки не забирають фокус у поля — клавіатура лишається відкритою
+  ["skip", "check"].forEach(id => ($(id).onmousedown = e => e.preventDefault()));
   ctx.keys(() => {});
 }
 
