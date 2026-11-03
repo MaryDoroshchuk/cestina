@@ -163,12 +163,18 @@ function typing(ctx, { audio }) {
       </div>
     </form>
     <div id="after"></div>`);
+  let done = false, lastGrade = 0;
   const inp = $("inp");
+  const focusInp = () => { if (!done) inp.focus({ preventScroll: true }); };
   if (audio) {
-    bindSay(document, w);
-    $("slow").onclick = () => speak(w.cz, { slow: true });
+    // кнопки звуку заодно відкривають клавіатуру (дотик дозволяє iOS це зробити)
+    $("play").onclick = e => { e.stopPropagation(); speak(w.cz); focusInp(); };
+    $("slow").onclick = e => { e.stopPropagation(); speak(w.cz, { slow: true }); focusInp(); };
+    $("slow").onmousedown = $("play").onmousedown = e => e.preventDefault();
     speak(w.cz);
   }
+  // дотик будь-де по картці із завданням теж відкриває клавіатуру
+  document.querySelector(".prompt").addEventListener("click", focusInp);
   document.querySelectorAll(".ltr").forEach(b => {
     b.onmousedown = e => e.preventDefault(); // не забирати фокус з поля
     b.onclick = () => {
@@ -180,7 +186,6 @@ function typing(ctx, { audio }) {
   // фокус одразу, у тому ж дотику, що й перехід, — тоді iOS не ховає клавіатуру
   inp.focus({ preventScroll: true });
   setTimeout(() => { if (document.activeElement !== inp && !done) inp.focus({ preventScroll: true }); }, 50);
-  let done = false, lastGrade = 0;
   const check = given => {
     if (done) return; done = true;
     const typed = norm(given);
