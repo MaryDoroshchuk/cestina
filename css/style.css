@@ -155,3 +155,38 @@ select { font: inherit; padding: 4px 8px; border-radius: 8px; }
 .seg button[disabled] { opacity: .35; }
 
 #kbproxy { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; font-size: 16px; pointer-events: none; }
+
+/* ---------- абетка ---------- */
+.link-row {
+  display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; text-align: left;
+  margin: 0 16px 20px; width: calc(100% - 32px); padding: 12px 14px; border-radius: 16px;
+  border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; cursor: pointer;
+}
+.abc-ico { width: 44px; height: 44px; border-radius: 12px; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 800; }
+.abc-card {
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: center;
+  background: var(--card); border-radius: 20px; box-shadow: var(--shadow); padding: 16px;
+  position: sticky; top: 0; z-index: 2;
+}
+.abc-big { font-size: 56px; font-weight: 800; color: var(--blue); line-height: 1; min-width: 72px; text-align: center; }
+.abc-big span { font-size: 32px; margin-left: 4px; opacity: .7; }
+.abc-name { font-weight: 700; font-size: 18px; }
+.abc-sound { margin-top: 2px; }
+.abc-ex { margin-top: 4px; font-size: 15px; }
+.abc-ex .cz { color: var(--blue); }
+.abc-card .note { margin-top: 6px; max-width: none; }
+.abc-btns { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 8px; }
+.abc-btns .btn { flex: 1; }
+.abc-btns .btn:last-child { flex: 0 0 56px; }
+.abc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 420px) { .abc-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+.abc-tile {
+  position: relative; aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--line); background: var(--card);
+  color: var(--fg); font: inherit; font-weight: 700; font-size: 17px; cursor: pointer; padding: 0; touch-action: manipulation; min-width: 0;
+  display: flex; align-items: baseline; justify-content: center; align-content: center; flex-wrap: wrap; gap: 1px;
+}
+.abc-tile small { font-size: 13px; font-weight: 500; opacity: .6; }
+.abc-tile.special::after { content: ""; position: absolute; top: 5px; right: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.abc-tile.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+.rule { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.rule p { margin: 4px 0 0; font-size: 15px; }

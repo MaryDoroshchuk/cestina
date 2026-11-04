@@ -2,6 +2,7 @@ import { createBackend, isDemo } from "./backend.js";
 import { today, addDays, keyOf, review, againToday, status, DIRS } from "./srs.js";
 import * as Modes from "./modes.js";
 import { matchSetup, matchGame } from "./match.js";
+import { showAlphabet } from "./alphabet.js";
 
 const $app = document.getElementById("app");
 const S = { be: null, user: null, profile: null, progress: {}, words: [], weeks: [], byId: {}, day: {} };
@@ -121,6 +122,7 @@ function showHome() {
         : `<h2>${doneToday ? "На сьогодні все ✓" : "Немає слів на сьогодні"}</h2>
            <p class="muted">${doneToday ? "Повертайся завтра або потренуй будь-який тиждень нижче." : "Обери тиждень нижче для вільного тренування."}</p>`}
     </section>
+    <button class="link-row" id="abc"><span class="abc-ico">Áa</span><span><b>Чеська абетка</b><br><span class="muted small">42 літери з вимовою та озвучкою</span></span><span class="muted">›</span></button>
     <h3 class="section">Вільне тренування</h3>
     <div class="weeks">${weeks}</div>
     ${isDemo ? `<p class="hint">Демо-режим: прогрес лише в цьому браузері.</p>` : ""}`);
@@ -128,6 +130,7 @@ function showHome() {
   if (daily) daily.onclick = () => runSession(d.queue, { daily: true, title: "Щоденна сесія" });
   document.querySelectorAll(".week").forEach(b => (b.onclick = () => showWeek(+b.dataset.week)));
   document.getElementById("settings").onclick = showSettings;
+  document.getElementById("abc").onclick = () => showAlphabet({ render, back: showHome });
 }
 
 function showSettings() {
