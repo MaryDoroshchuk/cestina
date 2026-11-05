@@ -190,8 +190,15 @@ function typing(ctx, { audio }) {
     if (done) return; done = true;
     const typed = norm(given);
     const right = typed !== "" && acceptable(w.cz).has(typed);
-    // поле лишається у фокусі (лише для читання), щоб клавіатура не закривалась; Enter = «Далі»
-    $("f").classList.add("locked"); inp.readOnly = true;
+    inp.readOnly = true;
+    if (right) {
+      // правильно: поле лишається у фокусі, клавіатура не закривається; Enter = «Далі»
+      $("f").classList.add("locked");
+    } else {
+      // помилка: ховаємо поле й клавіатуру, щоб розбір помилки було видно цілком
+      inp.blur();
+      $("f").hidden = true;
+    }
     $("after").innerHTML = `
       <div class="verdict ${right ? "good" : "bad"}">${right ? "Правильно" : typed ? "Помилка" : "Правильна відповідь"}</div>
       ${!right && typed ? `<div class="diff"><div class="muted small">Ти написала: ${esc(given.trim())}</div><div class="word">${diffHtml(typed, norm(w.cz))}</div></div>` : ""}
@@ -203,7 +210,16 @@ function typing(ctx, { audio }) {
     const go = () => ctx.answer(lastGrade);
     $("next").onclick = go;
     $("next").onmousedown = e => e.preventDefault();
-    inp.focus({ preventScroll: true });
+    if (right) inp.focus({ preventScroll: true });
+    else {
+      // після того як клавіатура сховається, показуємо розбір від завдання до кнопки «Далі»
+      const show = () => {
+        document.querySelector(".prompt").scrollIntoView({ block: "start", behavior: "smooth" });
+        const nb = $("next");
+        if (nb && nb.getBoundingClientRect().bottom > window.innerHeight) nb.scrollIntoView({ block: "end", behavior: "smooth" });
+      };
+      setTimeout(show, 350);
+    }
     ctx.keys(e => { if (e.key === "Enter" && document.activeElement !== inp) { e.preventDefault(); go(); } });
   };
   $("f").onsubmit = e => { e.preventDefault(); if (done) ctx.answer(lastGrade); else check(inp.value); };
