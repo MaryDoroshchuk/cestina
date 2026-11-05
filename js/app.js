@@ -1,8 +1,10 @@
 import { createBackend, isDemo } from "./backend.js";
 import { today, addDays, keyOf, review, againToday, status, DIRS } from "./srs.js";
 import * as Modes from "./modes.js";
+import { speak } from "./tts.js";
 import { matchSetup, matchGame } from "./match.js";
 import { showAlphabet } from "./alphabet.js";
+import { TOPICS } from "./topics.js";
 
 const $app = document.getElementById("app");
 const S = { be: null, user: null, profile: null, progress: {}, words: [], weeks: [], byId: {}, day: {} };
@@ -123,6 +125,7 @@ function showHome() {
            <p class="muted">${doneToday ? "Повертайся завтра або потренуй будь-який тиждень нижче." : "Обери тиждень нижче для вільного тренування."}</p>`}
     </section>
     <button class="link-row" id="abc"><span class="abc-ico">Áa</span><span><b>Чеська абетка</b><br><span class="muted small">42 літери з вимовою та озвучкою</span></span><span class="muted">›</span></button>
+    <button class="link-row" id="topics"><span class="abc-ico" style="background:var(--blue)">12</span><span><b>Місяці, дні, числа</b><br><span class="muted small">усе на одному екрані + тренування</span></span><span class="muted">›</span></button>
     <h3 class="section">Вільне тренування</h3>
     <div class="weeks">${weeks}</div>
     ${isDemo ? `<p class="hint">Демо-режим: прогрес лише в цьому браузері.</p>` : ""}`);
@@ -131,6 +134,7 @@ function showHome() {
   document.querySelectorAll(".week").forEach(b => (b.onclick = () => showWeek(+b.dataset.week)));
   document.getElementById("settings").onclick = showSettings;
   document.getElementById("abc").onclick = () => showAlphabet({ render, back: showHome });
+  document.getElementById("topics").onclick = () => showTopic("months");
 }
 
 function showSettings() {
@@ -204,6 +208,53 @@ async function showMatch(setId, title, words, back) {
   setup();
 }
 
+// ---------- місяці, дні, числа ----------
+const MODES = [
+  ["cards", "Картки"], ["quiz", "Тест"], ["type", "Написання"], ["audio", "Аудіо"], ["match", "Знайди пару"]
+];
+
+function showTopic(id) {
+  const T = TOPICS.find(t => t.id === id);
+  const byCz = Object.fromEntries(S.words.map(w => [w.cz, w]));
+  const items = T.items.map(([cz, label]) => ({ w: byCz[cz], label })).filter(x => x.w);
+  const ws = items.map(x => x.w);
+  const short = cz => cz.split(/,\s*/)[0];
+  render(`
+    <header class="top"><button class="icon" id="back">←</button><h2>${esc(T.title)}</h2><span></span></header>
+    <div class="pad stack">
+      <div class="seg" id="tabs">${TOPICS.map(t => `<button data-t="${t.id}" class="${t.id === id ? "on" : ""}">${t.tab}</button>`).join("")}</div>
+      <div class="tlist c${T.cols}">
+        ${items.map(({ w, label }) => {
+          const st = S.progress[keyOf(w.id, DIRS.R)];
+          const known = ["known", "done"].includes(status(st));
+          return `<button class="titem ${known ? "known" : ""}" data-say="${esc(w.cz)}">
+            <span class="tl">${esc(label)}</span>
+            <span class="tw"><b>${esc(T.id === "numbers" ? short(w.cz) : w.cz)}</b><small>${esc(T.id === "numbers" ? w.pron.split(",")[0] : w.pron)}</small>${T.id === "numbers" ? "" : `<em>${esc(w.ua)}</em>`}</span>
+          </button>`;
+        }).join("")}
+      </div>
+      <p class="muted small">Торкнись, щоб почути. Зелена позначка — слово вже добре знаєш.</p>
+      <div class="seg" id="dir"><button data-d="r" class="on">CZ → UA</button><button data-d="p">UA → CZ</button><button data-d="mix">Мікс</button></div>
+      <div class="mgrid">${MODES.map(([m, l]) => `<button class="btn" data-m="${m}">${l}</button>`).join("")}</div>
+      ${T.tips}
+    </div>`);
+  document.getElementById("back").onclick = showHome;
+  document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => showTopic(b.dataset.t)));
+  document.querySelectorAll("[data-say]").forEach(b => (b.onclick = () => speak(b.dataset.say)));
+  let dir = "r";
+  document.querySelectorAll("#dir button").forEach(b => (b.onclick = () => {
+    dir = b.dataset.d;
+    document.querySelectorAll("#dir button").forEach(x => x.classList.toggle("on", x === b));
+  }));
+  const back = () => showTopic(id);
+  document.querySelectorAll("[data-m]").forEach(b => (b.onclick = () => {
+    const m = b.dataset.m;
+    if (m === "match") return showMatch(`t_${id}`, T.title, ws, back);
+    const d = m === "type" ? () => "p" : m === "audio" ? () => "r" : () => (dir === "mix" ? (Math.random() < 0.5 ? "r" : "p") : dir);
+    runSession(shuffle(ws.map(w => ({ id: w.id, dir: d(), mode: m }))), { title: T.title, back, pool: ws });
+  }));
+}
+
 // ---------- session ----------
 function runSession(queue, opts) {
   const t = today();
@@ -226,7 +277,7 @@ function runSession(queue, opts) {
     let answered = false;
     keyHandler = null;
     Modes[mode]({
-      w, item, pool: weekPool.length >= 8 ? weekPool : pool,
+      w, item, pool: opts.pool || (weekPool.length >= 8 ? weekPool : pool),
       prepKeyboard() {
         const n = sess.queue[1];
         if (n && KB_MODES.includes(modeOf(n))) kbProxy.focus({ preventScroll: true });
