@@ -10,7 +10,7 @@ const $app = document.getElementById("app");
 const S = { be: null, user: null, profile: null, progress: {}, words: [], weeks: [], byId: {}, day: {} };
 const kbProxy = document.getElementById("kbproxy");
 const KB_MODES = ["type", "audio"];
-const DEFAULTS = { newPerDay: 7, streak: 0, best: 0, lastDay: null };
+const DEFAULTS = { newPerDay: 7, reviewsPerDay: 50, streak: 0, best: 0, lastDay: null };
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -70,17 +70,24 @@ function currentStreak() {
 }
 
 function buildDailyQueue() {
-  const t = today(), P = S.progress, reviews = [], fresh = [];
+  const t = today(), P = S.progress, due = [], unlocked = [], fresh = [];
   for (const [key, st] of Object.entries(P)) {
     const [id, dir] = key.split(":");
-    if (S.byId[id] && st.due <= t) reviews.push({ id, dir });
+    if (S.byId[id] && st.due <= t) due.push({ id, dir, d: st.due, step: st.step });
   }
   // Після першого «знаю» слово відкривається і в зворотному напрямку
   for (const w of S.words) {
     const r = P[keyOf(w.id, DIRS.R)];
-    if (r && r.step >= 1 && !P[keyOf(w.id, DIRS.P)]) reviews.push({ id: w.id, dir: DIRS.P });
+    if (r && r.step >= 1 && !P[keyOf(w.id, DIRS.P)]) unlocked.push({ id: w.id, dir: DIRS.P });
   }
-  const left = Math.max(0, S.profile.newPerDay - (S.day.newWords || 0));
+  // Спершу найбільш прострочені, серед них — найслабші; ліміт повторень на день
+  due.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : a.step - b.step));
+  const all = [...due.map(({ id, dir }) => ({ id, dir })), ...unlocked];
+  const cap = S.profile.reviewsPerDay || DEFAULTS.reviewsPerDay;
+  const reviews = all.slice(0, cap);
+  const backlog = all.length - reviews.length;
+  // Нові слова — лише коли накопичені повторення вміщаються в ліміт, щоб сесії не розросталися
+  const left = backlog > 0 ? 0 : Math.max(0, S.profile.newPerDay - (S.day.newWords || 0));
   for (const w of S.words) {
     if (fresh.length >= left) break;
     if (!P[keyOf(w.id, DIRS.R)]) fresh.push({ id: w.id, dir: DIRS.R, isNew: true });
@@ -89,7 +96,7 @@ function buildDailyQueue() {
   // нові слова рівномірно між повтореннями
   const q = [...reviews];
   fresh.forEach((f, i) => q.splice(Math.floor(((i + 1) * q.length) / (fresh.length + 1)) + i, 0, f));
-  return { queue: q, reviews: reviews.length, fresh: fresh.length };
+  return { queue: q, reviews: reviews.length, fresh: fresh.length, backlog };
 }
 
 function weekStats(week) {
@@ -117,16 +124,19 @@ function showHome() {
       <button class="icon" id="settings" aria-label="Налаштування">⚙︎</button>
     </header>
     <section class="hero">
-      ${d.queue.length
+      ${d.queue.length && !doneToday
         ? `<h2>Сьогодні</h2>
            <p class="muted">${d.reviews} на повторення · ${d.fresh} нових</p>
+           ${d.backlog ? `<p class="muted small">Ще ${d.backlog} повторень чекають на наступні дні. Нові слова повернуться, коли їх розбереш.</p>` : ""}
            <button class="btn primary big" id="daily">Почати</button>`
         : `<h2>${doneToday ? "На сьогодні все ✓" : "Немає слів на сьогодні"}</h2>
-           <p class="muted">${doneToday ? "Повертайся завтра або потренуй будь-який тиждень нижче." : "Обери тиждень нижче для вільного тренування."}</p>`}
+           <p class="muted">${doneToday ? "Повертайся завтра або потренуй будь-який тиждень нижче." : "Обери тиждень нижче для вільного тренування."}</p>
+           ${doneToday && d.queue.length ? `<button class="btn" id="daily">Ще повторення: ${d.queue.length}</button>` : ""}`}
     </section>
     <button class="link-row" id="abc"><span class="abc-ico">Áa</span><span><b>Чеська абетка</b><br><span class="muted small">42 літери з вимовою та озвучкою</span></span><span class="muted">›</span></button>
     <button class="link-row" id="topics"><span class="abc-ico" style="background:var(--blue)">12</span><span><b>Місяці, дні, числа</b><br><span class="muted small">усе на одному екрані + тренування</span></span><span class="muted">›</span></button>
     <h3 class="section">Вільне тренування</h3>
+    <p class="hint" style="text-align:left;margin:-4px 16px 10px;padding:0">Практика без впливу на розклад повторень: тренуй скільки хочеш.</p>
     <div class="weeks">${weeks}</div>
     ${isDemo ? `<p class="hint">Демо-режим: прогрес лише в цьому браузері.</p>` : ""}`);
   const daily = document.getElementById("daily");
@@ -143,10 +153,16 @@ function showSettings() {
     <header class="top"><button class="icon" id="back">←</button><h2>Налаштування</h2><span></span></header>
     <div class="stack pad">
       <label class="row">Нових слів на день <select id="npd">${opts}</select></label>
+      <label class="row">Повторень на день <select id="rpd">${[30, 50, 80, 120, 200].map(n => `<option ${n === (S.profile.reviewsPerDay || 50) ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <p class="muted small">Якщо повторень накопичилося більше, решта перейде на наступні дні, а нові слова почекають.</p>
       <p class="muted small">Серія: зараз ${currentStreak()}, найдовша ${S.profile.best}</p>
       <button class="btn" id="out">Вийти з акаунта</button>
     </div>`);
   document.getElementById("back").onclick = showHome;
+  document.getElementById("rpd").onchange = e => {
+    S.profile.reviewsPerDay = +e.target.value;
+    S.be.saveProfile(S.user, { reviewsPerDay: S.profile.reviewsPerDay }).catch(fail);
+  };
   document.getElementById("npd").onchange = e => {
     S.profile.newPerDay = +e.target.value;
     S.be.saveProfile(S.user, { newPerDay: S.profile.newPerDay }).catch(fail);
@@ -309,17 +325,25 @@ function runSession(queue, opts) {
   function answer(item, grade, { stepCap } = {}) {
     sess.queue.shift();
     const key = keyOf(item.id, item.dir);
-    const wasNew = !S.progress[key];
-    const st = review(S.progress[key], grade, { day: t, stepCap });
-    S.progress[key] = st;
-    S.be.saveProgress(S.user, key, st).catch(fail);
     const delta = { answers: 1, correct: grade > 0 ? 1 : 0 };
-    if (wasNew && item.dir === DIRS.R) { delta.newWords = 1; S.day.newWords = (S.day.newWords || 0) + 1; }
+    let again;
+    if (opts.daily) {
+      // розклад повторень змінює лише щоденна сесія
+      const wasNew = !S.progress[key];
+      const st = review(S.progress[key], grade, { day: t, stepCap });
+      S.progress[key] = st;
+      S.be.saveProgress(S.user, key, st).catch(fail);
+      if (wasNew && item.dir === DIRS.R) { delta.newWords = 1; S.day.newWords = (S.day.newWords || 0) + 1; }
+      again = againToday(st);
+    } else {
+      // вільне тренування: лише практика, помилки повторюються в цій же сесії
+      again = grade === 0;
+    }
     S.be.logDay(S.user, t, delta).catch(fail);
     sess.done++;
     if (grade > 0) sess.right++; else sess.mistakes.set(key, item);
     // у вільному тренуванні режим фіксований; у щоденній сесії повтор піде іншим режимом
-    if (againToday(st)) sess.queue.splice(Math.min(3, sess.queue.length), 0, { id: item.id, dir: item.dir, mode: item.mode });
+    if (again) sess.queue.splice(Math.min(3, sess.queue.length), 0, { id: item.id, dir: item.dir, mode: item.mode });
     next();
   }
 
