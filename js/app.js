@@ -235,18 +235,14 @@ function topicWords(T) {
 }
 const allTopicWords = () => TOPICS.flatMap(topicWords);
 
-// Змішаний тренажер: кожне слово отримує свій режим, половина — на письмо (написання або аудіо).
+// Змішаний тренажер: тільки письмо — написання за перекладом і на слух, по черзі.
 // Варіанти в тесті — з того ж списку (місяць серед місяців). Розклад і рахунок не змінюються.
 function mixedTopicSession(topics, back) {
   const poolById = {};
   topics.forEach(T => { const ws = topicWords(T); ws.forEach(w => (poolById[w.id] = ws)); });
   const words = shuffle(topics.flatMap(topicWords));
-  const plan = ["type", "quiz", "audio", "type", "cards", "quiz"];
-  const q = words.map((w, i) => {
-    const mode = plan[i % plan.length];
-    const dir = mode === "type" ? "p" : mode === "audio" ? "r" : Math.random() < 0.5 ? "r" : "p";
-    return { id: w.id, dir, mode };
-  });
+  // лише письмо: по черзі «напиши за перекладом» і «напиши почуте»
+  const q = words.map((w, i) => (i % 2 ? { id: w.id, dir: "r", mode: "audio" } : { id: w.id, dir: "p", mode: "type" }));
   runSession(q, { title: "Змішаний тренажер", back, poolOf: w => poolById[w.id] });
 }
 
@@ -272,7 +268,7 @@ function showTopic(id) {
       </div>
       <p class="muted small">Торкнись, щоб почути. Зелена позначка — слово вже добре знаєш.</p>
       <div class="mix">
-        <div><b>Змішаний тренажер</b><br><span class="muted small">Картки, тест, написання й аудіо вперемішку. Не впливає на прогрес і загальний рахунок.</span></div>
+        <div><b>Змішаний тренажер</b><br><span class="muted small">Тільки письмо: пишеш слово за перекладом або на слух, по черзі. Не впливає на прогрес і загальний рахунок.</span></div>
         <div class="mix-btns">
           <button class="btn" id="mix-one">${esc(T.tab)} (${ws.length})</button>
           <button class="btn primary" id="mix-all">Усе разом (${allTopicWords().length})</button>
