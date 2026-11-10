@@ -236,3 +236,5 @@ export function pickMode(item, st) {
   if (step === 1) return Math.random() < 0.5 ? "quiz" : "type";
   return "type";
 }
+
+export { pronounce } from "./pronounce.js";

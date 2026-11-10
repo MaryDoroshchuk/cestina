@@ -23,6 +23,8 @@ async function boot() {
   const data = await (await fetch("data/words.json")).json();
   S.words = data.words; S.weeks = data.weeks;
   S.words.forEach(w => (S.byId[w.id] = w));
+  try { S.sentences = await (await fetch("data/sentences.json")).json(); } catch { S.sentences = []; }
+  S.sentences.forEach(x => (S.byId[x.id] = x));
   S.be = await createBackend();
   S.be.onUser(async u => {
     S.user = u;
@@ -175,7 +177,7 @@ function showWeek(week) {
   const ws = S.words.filter(w => w.week === week);
   const modes = [
     ["cards", "Картки", "з перевертанням"], ["quiz", "Тест з варіантами", "4 варіанти"],
-    ["type", "Написання", "бачиш переклад, пишеш чеською"], ["audio", "Аудіо", "чуєш слово, пишеш його"],
+    ["type", "Написання", "бачиш переклад, пишеш чеською"], ["audio", "Аудіо", "чуєш слово, пишеш його"], ["pronounce", "Вимова", "кажеш вголос, сайт перевіряє"],
     ["match", "Знайди пару", "на час"]
   ];
   render(`
@@ -202,7 +204,8 @@ function showWeek(week) {
     const m = b.dataset.m;
     if (m === "match") return showMatch(`w${String(week).padStart(2, "0")}`, `Тиждень ${week}`, ws, back);
     const d = m === "type" ? () => "p" : m === "audio" ? () => "r" : () => (dir === "mix" ? (Math.random() < 0.5 ? "r" : "p") : dir);
-    const q = shuffle(ws.map(w => ({ id: w.id, dir: d(), mode: m })));
+    const list = m === "pronounce" ? [...S.sentences.filter(x => x.week === week), ...ws] : ws;
+    const q = m === "pronounce" ? list.map(w => ({ id: w.id, dir: "r", mode: m })) : shuffle(list.map(w => ({ id: w.id, dir: d(), mode: m })));
     runSession(q, { title: `Тиждень ${week}`, back });
   }));
 }
@@ -226,7 +229,7 @@ async function showMatch(setId, title, words, back) {
 
 // ---------- місяці, дні, числа ----------
 const MODES = [
-  ["cards", "Картки"], ["quiz", "Тест"], ["type", "Написання"], ["audio", "Аудіо"], ["match", "Знайди пару"]
+  ["cards", "Картки"], ["quiz", "Тест"], ["type", "Написання"], ["audio", "Аудіо"], ["pronounce", "Вимова"], ["match", "Знайди пару"]
 ];
 
 function topicWords(T) {
