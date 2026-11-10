@@ -251,3 +251,7 @@ select { font: inherit; padding: 4px 8px; border-radius: 8px; }
 .titem.known::after { content: ""; position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--good); }
 .mgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .mgrid .btn:last-child { grid-column: 1 / -1; }
+
+.mix { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
+.mix-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.mix-btns .btn { padding: 11px 8px; font-size: 15px; }

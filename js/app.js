@@ -229,6 +229,27 @@ const MODES = [
   ["cards", "Картки"], ["quiz", "Тест"], ["type", "Написання"], ["audio", "Аудіо"], ["match", "Знайди пару"]
 ];
 
+function topicWords(T) {
+  const byCz = Object.fromEntries(S.words.map(w => [w.cz, w]));
+  return T.items.map(([cz]) => byCz[cz]).filter(Boolean);
+}
+const allTopicWords = () => TOPICS.flatMap(topicWords);
+
+// Змішаний тренажер: кожне слово отримує свій режим, половина — на письмо (написання або аудіо).
+// Варіанти в тесті — з того ж списку (місяць серед місяців). Розклад і рахунок не змінюються.
+function mixedTopicSession(topics, back) {
+  const poolById = {};
+  topics.forEach(T => { const ws = topicWords(T); ws.forEach(w => (poolById[w.id] = ws)); });
+  const words = shuffle(topics.flatMap(topicWords));
+  const plan = ["type", "quiz", "audio", "type", "cards", "quiz"];
+  const q = words.map((w, i) => {
+    const mode = plan[i % plan.length];
+    const dir = mode === "type" ? "p" : mode === "audio" ? "r" : Math.random() < 0.5 ? "r" : "p";
+    return { id: w.id, dir, mode };
+  });
+  runSession(q, { title: "Змішаний тренажер", back, poolOf: w => poolById[w.id] });
+}
+
 function showTopic(id) {
   const T = TOPICS.find(t => t.id === id);
   const byCz = Object.fromEntries(S.words.map(w => [w.cz, w]));
@@ -250,6 +271,13 @@ function showTopic(id) {
         }).join("")}
       </div>
       <p class="muted small">Торкнись, щоб почути. Зелена позначка — слово вже добре знаєш.</p>
+      <div class="mix">
+        <div><b>Змішаний тренажер</b><br><span class="muted small">Картки, тест, написання й аудіо вперемішку. Не впливає на прогрес і загальний рахунок.</span></div>
+        <div class="mix-btns">
+          <button class="btn" id="mix-one">${esc(T.tab)} (${ws.length})</button>
+          <button class="btn primary" id="mix-all">Усе разом (${allTopicWords().length})</button>
+        </div>
+      </div>
       <div class="seg" id="dir"><button data-d="r" class="on">CZ → UA</button><button data-d="p">UA → CZ</button><button data-d="mix">Мікс</button></div>
       <div class="mgrid">${MODES.map(([m, l]) => `<button class="btn" data-m="${m}">${l}</button>`).join("")}</div>
       ${T.tips}
@@ -263,6 +291,8 @@ function showTopic(id) {
     document.querySelectorAll("#dir button").forEach(x => x.classList.toggle("on", x === b));
   }));
   const back = () => showTopic(id);
+  document.getElementById("mix-one").onclick = () => mixedTopicSession([T], back);
+  document.getElementById("mix-all").onclick = () => mixedTopicSession(TOPICS, back);
   document.querySelectorAll("[data-m]").forEach(b => (b.onclick = () => {
     const m = b.dataset.m;
     if (m === "match") return showMatch(`t_${id}`, T.title, ws, back);
@@ -293,7 +323,7 @@ function runSession(queue, opts) {
     let answered = false;
     keyHandler = null;
     Modes[mode]({
-      w, item, pool: opts.pool || (weekPool.length >= 8 ? weekPool : pool),
+      w, item, pool: (opts.poolOf && opts.poolOf(w)) || opts.pool || (weekPool.length >= 8 ? weekPool : pool),
       prepKeyboard() {
         const n = sess.queue[1];
         if (n && KB_MODES.includes(modeOf(n))) kbProxy.focus({ preventScroll: true });
@@ -336,14 +366,15 @@ function runSession(queue, opts) {
       if (wasNew && item.dir === DIRS.R) { delta.newWords = 1; S.day.newWords = (S.day.newWords || 0) + 1; }
       again = againToday(st);
     } else {
-      // вільне тренування: лише практика, помилки повторюються в цій же сесії
-      again = grade === 0;
+      // вільне тренування: лише практика; помилкове слово з'явиться ще раз один раз у цій же сесії,
+      // а далі — у списку помилок наприкінці
+      again = grade === 0 && !item.retried;
     }
-    S.be.logDay(S.user, t, delta).catch(fail);
+    if (opts.daily) S.be.logDay(S.user, t, delta).catch(fail); // практика не входить у загальний рахунок
     sess.done++;
     if (grade > 0) sess.right++; else sess.mistakes.set(key, item);
     // у вільному тренуванні режим фіксований; у щоденній сесії повтор піде іншим режимом
-    if (again) sess.queue.splice(Math.min(3, sess.queue.length), 0, { id: item.id, dir: item.dir, mode: item.mode });
+    if (again) sess.queue.splice(Math.min(3, sess.queue.length), 0, { id: item.id, dir: item.dir, mode: item.mode, retried: !opts.daily });
     next();
   }
 
