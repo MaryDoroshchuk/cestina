@@ -3,7 +3,9 @@
 #   fill:   ("речення з ___", "відповідь" | ["варіант1", "варіант2"], "переклад/підказка")
 #   choice: ("речення з ___", ["опція", ...], "правильна", "переклад")
 #   build:  ("Правильне речення.", "переклад", [альтернативні правильні порядки])
-import json
+import json, re, sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from translit import tr
 
 def T(*rows, head=None):
     h = "".join(f"<th>{c}</th>" for c in head) if head else ""
@@ -567,7 +569,8 @@ sets=[
 # ---------- шпаргалки простою мовою (замінюють grammar вище) ----------
 def EX(*rows):
     """Приклади: (чеською, українською)"""
-    return '<table class="tbl ex-tbl">' + "".join(f'<tr><td><b class="cz">{c}</b></td><td>{u}</td></tr>' for c, u in rows) + "</table>"
+    return '<table class="tbl ex-tbl">' + "".join(f'<tr><td><button class="say-cz" data-say="{say_text(c)}"><b class="cz">{c}</b><small class="pr">[{tr(c)}]</small></button></td><td>{u}</td></tr>' for c, u in rows) + "</table>"
+def say_text(c): return re.sub(r"\s*(→|·|/)\s*", ", ", c).replace('"', "")
 def H(t): return f'<h4 class="g-h">{t}</h4>'
 def P(t): return f"<p>{t}</p>"
 def TIP(t): return f'<p class="tip">💡 {t}</p>'
@@ -669,6 +672,48 @@ G[14] = H("1. Подобається, смакує, люблю") + EX(
 for les in L:
     les["grammar"] = G[les["n"]]
 
+
+# ---------- тренажер правопису: пари «українською → чеською» зі шпаргалки ----------
+ROW = re.compile(r'<b class="cz">(.*?)</b>.*?</td><td>(.*?)</td></tr>')
+def strip_tags(x): return re.sub(r"<[^>]+>", "", x).strip()
+def clean_ua(u):
+    # лишаємо тільки підказки роду: (чоловік) / (жінка); решту пояснень у дужках прибираємо
+    u = re.sub(r"\s*\(([^)]*)\)", lambda m: f" ({m.group(1)})" if m.group(1) in ("чоловік", "жінка") else "", u)
+    u = re.sub(r"\s+—\s+.*$", "", u)                       # пояснення після тире
+    return u.strip()
+def split_pair(c, u):
+    for sep in (" · ", " / "):
+        if sep in c:
+            cs, us = c.split(sep), u.split(sep)
+            if len(cs) == len(us):
+                # «Mám kašel · rýmu» → «Mám rýmu»
+                head_c, head_u = cs[0].split(" ")[:-1], us[0].split(" ")[:-1]
+                if re.search(r"[.?!]$", c) and len(cs[0].split()) > 1 and all(len(x.split()) == 1 for x in cs[1:]) and head_u:
+                    cs = [cs[0]] + [" ".join(head_c + [x]) for x in cs[1:]]
+                    us = [us[0]] + [" ".join(head_u + [x]) for x in us[1:]]
+                return list(zip(cs, us))
+    if ", " in c and not re.search(r"[.?!]$", c):
+        cs, us = c.split(", "), u.split(", ")
+        if len(cs) == len(us): return list(zip(cs, us))
+    return [(c, u)]
+def drills(html):
+    out, seen = [], set()
+    for c, u in ROW.findall(html):
+        c, u = strip_tags(c), clean_ua(strip_tags(u))
+        if c.count("→") > 1: continue
+        if "→" in c:
+            c = c.split("→")[1].strip()
+            if "→" in u: u = u.split("→")[1].strip()
+        u = clean_ua(u)
+        for cc, uu in split_pair(c, u):
+            cc, uu = cc.strip(), clean_ua(uu)
+            if not cc or not uu or uu.startswith("-") or cc.startswith("-") or cc.lower() in seen: continue
+            seen.add(cc.lower())
+            out.append(dict(cz=cc, ua=uu, pron=tr(cc)))
+    return out
+for les in L:
+    les["drill"] = drills(les["grammar"])
+
 # ---------- експорт ----------
 def as_list(a): return a if isinstance(a, list) else [a]
 out = []
@@ -685,6 +730,6 @@ for les in L:
                 cz, ua, *alt = it; items.append(dict(cz=cz, ua=ua, alt=alt[0] if alt else []))
             if s["type"] != "build": assert items[-1]["q"].count("___") == 1, items[-1]["q"]
         sets.append(dict(id=f"L{les['n']}{'ABCD'[si]}", type=s["type"], title=s["title"], items=items))
-    out.append(dict(n=les["n"], cz=les["cz"], ua=les["ua"], grammar=les["grammar"], sets=sets))
+    out.append(dict(n=les["n"], cz=les["cz"], ua=les["ua"], grammar=les["grammar"], sets=sets, drill=les["drill"]))
 json.dump(out, open("data/exercises.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 print(len(out), "lessons,", sum(len(l["sets"]) for l in out), "sets,", sum(len(s["items"]) for l in out for s in l["sets"]), "items")

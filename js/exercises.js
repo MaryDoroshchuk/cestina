@@ -50,8 +50,9 @@ function showLesson(ctx, n) {
     <header class="top"><button class="icon" id="back">←</button><h2>Урок ${n}</h2><span></span></header>
     <div class="pad stack">
       <div><b style="font-size:20px">${esc(l.cz)}</b><br><span class="muted">${esc(l.ua)}</span></div>
+      ${l.drill && l.drill.length ? `<button class="btn primary mode" id="drill"><span>✍️ Тренувати правопис<br><span class="soon" style="color:inherit;opacity:.8">слова й форми зі шпаргалки · ${l.drill.length}</span></span><span>›</span></button>` : ""}
       <details class="mark" open>
-        <summary><span class="mark-sign small-sign">📘</span><span><b>Шпаргалка</b><br><span class="small muted">граматика уроку</span></span></summary>
+        <summary><span class="mark-sign small-sign">📘</span><span><b>Шпаргалка</b><br><span class="small muted">торкнись чеського слова, щоб почути</span></span></summary>
         <div class="mark-body">${l.grammar}</div>
       </details>
       ${l.sets.map(s => {
@@ -64,6 +65,9 @@ function showLesson(ctx, n) {
       ${n < data.length ? `<button class="btn" id="next-l">Наступний урок →</button>` : ""}
     </div>`);
   $("back").onclick = () => showExercises(ctx);
+  // дотик до чеського слова в шпаргалці — озвучка
+  document.querySelectorAll(".say-cz").forEach(b => (b.onclick = () => speak(b.dataset.say)));
+  const dr = $("drill"); if (dr) dr.onclick = () => ctx.drill(l, () => showLesson(ctx, l.n));
   document.querySelectorAll("[data-s]").forEach(b => (b.onclick = () => runSet(ctx, l, l.sets.find(s => s.id === b.dataset.s))));
   const nx = $("next-l"); if (nx) nx.onclick = () => showLesson(ctx, n + 1);
 }

@@ -295,3 +295,8 @@ select { font: inherit; padding: 4px 8px; border-radius: 8px; }
 .mark-body .g-h:first-child { margin-top: 4px; }
 .ex-tbl td:first-child { white-space: normal; width: 52%; }
 .ex-tbl .cz { color: var(--blue); }
+
+.say-cz { all: unset; cursor: pointer; display: block; -webkit-tap-highlight-color: transparent; }
+.say-cz .cz::after { content: " 🔊"; font-size: 12px; opacity: .6; }
+.say-cz .pr { display: block; color: var(--muted); font-size: 12px; font-weight: 400; margin-top: 1px; }
+.say-cz:active .cz { opacity: .6; }

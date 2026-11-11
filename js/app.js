@@ -149,7 +149,7 @@ function showHome() {
   document.getElementById("settings").onclick = showSettings;
   document.getElementById("abc").onclick = () => showAlphabet({ render, back: showHome });
   document.getElementById("topics").onclick = () => showTopic("months");
-  document.getElementById("exercises").onclick = () => showExercises({ render, back: showHome, be: S.be, user: S.user });
+  document.getElementById("exercises").onclick = () => showExercises({ render, back: showHome, be: S.be, user: S.user, drill: grammarDrill });
 }
 
 function showSettings() {
@@ -246,10 +246,21 @@ const allTopicWords = () => TOPICS.flatMap(topicWords);
 function mixedTopicSession(topics, back) {
   const poolById = {};
   topics.forEach(T => { const ws = topicWords(T); ws.forEach(w => (poolById[w.id] = ws)); });
-  const words = shuffle(topics.flatMap(topicWords));
-  // лише письмо: по черзі «напиши за перекладом» і «напиши почуте»
+  writingSession(topics.flatMap(topicWords), "Змішаний тренажер", back, w => poolById[w.id]);
+}
+
+// Тренажер правопису: лише письмо, по черзі «напиши за перекладом» і «напиши почуте». Практика — без впливу на прогрес.
+function writingSession(list, title, back, poolOf) {
+  const words = shuffle([...list]);
   const q = words.map((w, i) => (i % 2 ? { id: w.id, dir: "r", mode: "audio" } : { id: w.id, dir: "p", mode: "type" }));
-  runSession(q, { title: "Змішаний тренажер", back, poolOf: w => poolById[w.id] });
+  runSession(q, { title, back, poolOf: poolOf || (() => list) });
+}
+
+// Правопис форм зі шпаргалки уроку вправ (я є → jsem, …)
+function grammarDrill(lesson, back) {
+  const items = lesson.drill.map((x, i) => ({ ...x, id: `g${lesson.n}-${i}`, week: 0, note: "" }));
+  items.forEach(w => (S.byId[w.id] = w));
+  writingSession(items, `Урок ${lesson.n}: правопис`, back);
 }
 
 function showTopic(id) {
@@ -392,9 +403,9 @@ function runSession(queue, opts) {
         ${opts.daily ? `<p>🔥 Серія: ${currentStreak()} ${dayWord(currentStreak())}</p>` : ""}
         ${mistakes.length ? `<div class="mist"><h3>Помилки</h3><ul class="list">${mistakes.map(m => `<li><b>${esc(S.byId[m.id].cz)}</b> — ${esc(S.byId[m.id].ua)}</li>`).join("")}</ul></div>
            <button class="btn" id="again">Повторити помилки</button>` : ""}
-        <button class="btn primary" id="home">На головну</button>
+        <button class="btn primary" id="home">${opts.back ? "Назад" : "На головну"}</button>
       </div>`);
-    document.getElementById("home").onclick = showHome;
+    document.getElementById("home").onclick = opts.back || showHome;
     const again = document.getElementById("again");
     if (again) again.onclick = () => runSession(shuffle(mistakes.map(m => ({ id: m.id, dir: m.dir, mode: m.mode }))), { title: "Помилки", back: opts.back });
   }
