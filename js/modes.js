@@ -208,7 +208,9 @@ function typing(ctx, { audio }) {
     $("next").onmousedown = e => e.preventDefault();
     // коли клавіатура сховається, показуємо все від завдання до кнопки «Далі»
     setTimeout(() => {
-      document.querySelector(".prompt").scrollIntoView({ block: "start", behavior: "smooth" });
+      const pr = document.querySelector(".prompt");
+      if (!pr || !document.getElementById("next")) return; // користувач уже пішов далі
+      pr.scrollIntoView({ block: "start", behavior: "smooth" });
       const nb = $("next");
       if (nb && nb.getBoundingClientRect().bottom > window.innerHeight) nb.scrollIntoView({ block: "end", behavior: "smooth" });
     }, 350);
