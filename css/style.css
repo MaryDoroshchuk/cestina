@@ -264,3 +264,30 @@ select { font: inherit; padding: 4px 8px; border-radius: 8px; }
 .center-text { text-align: center; }
 .verdict.mid-c { color: var(--mid); }
 #result .listen { flex-wrap: wrap; }
+
+/* ---------- вправи ---------- */
+.small-h { font-size: 16px !important; text-align: center; }
+.ex-row { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.ex-row.is-ok { border-color: var(--good); } .ex-row.is-no { border-color: var(--bad); }
+.ex-q { font-size: 18px; line-height: 1.9; }
+.ex-inp { font: inherit; font-size: 18px; width: 9em; max-width: 100%; padding: 2px 8px; margin: 0 4px; border: 0; border-bottom: 2px solid var(--blue);
+  background: var(--bg); color: var(--fg); border-radius: 6px 6px 0 0; outline: none; }
+.ex-inp:read-only { border-bottom-color: var(--line); }
+.ex-gap { display: inline-block; min-width: 2.5em; border-bottom: 2px solid var(--blue); text-align: center; color: var(--muted); margin: 0 4px; }
+.ex-ua { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.ex-opts { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.ex-opt { font: inherit; font-size: 16px; font-weight: 600; padding: 7px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; touch-action: manipulation; }
+.ex-opt.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+.ex-opt.right { background: var(--good); color: #fff; border-color: var(--good); opacity: 1; }
+.ex-opt.wrong { background: var(--bad); color: #fff; border-color: var(--bad); opacity: 1; }
+.ex-opt:disabled:not(.right):not(.wrong) { opacity: .45; }
+.ex-fb { font-size: 14px; }
+.ex-fb:not(:empty) { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ex-fb.ok { color: var(--good); } .ex-fb.no { color: var(--bad); }
+.ex-fb .cz { color: var(--blue); }
+.b-line { min-height: 44px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px; border-radius: 10px; border: 1px dashed var(--line); background: var(--bg); }
+.b-bank { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip-w { font: inherit; font-size: 16px; padding: 6px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; touch-action: manipulation; }
+.chip-w.in { background: var(--blue); color: #fff; border-color: var(--blue); }
+.chip-w.ghost { opacity: .25; cursor: default; }
+.sticky-letters { position: sticky; bottom: 8px; background: var(--bg); padding: 6px; border-radius: 12px; box-shadow: var(--shadow); z-index: 3; }

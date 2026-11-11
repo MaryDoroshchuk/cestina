@@ -5,6 +5,7 @@ import { speak } from "./tts.js";
 import { matchSetup, matchGame } from "./match.js";
 import { showAlphabet } from "./alphabet.js";
 import { TOPICS } from "./topics.js";
+import { showExercises } from "./exercises.js";
 
 const $app = document.getElementById("app");
 const S = { be: null, user: null, profile: null, progress: {}, words: [], weeks: [], byId: {}, day: {} };
@@ -137,6 +138,7 @@ function showHome() {
     </section>
     <button class="link-row" id="abc"><span class="abc-ico">Áa</span><span><b>Чеська абетка</b><br><span class="muted small">42 літери з вимовою та озвучкою</span></span><span class="muted">›</span></button>
     <button class="link-row" id="topics"><span class="abc-ico" style="background:var(--blue)">12</span><span><b>Місяці, дні, числа</b><br><span class="muted small">усе на одному екрані + тренування</span></span><span class="muted">›</span></button>
+    <button class="link-row" id="exercises"><span class="abc-ico" style="background:var(--good)">✎</span><span><b>Вправи з граматики</b><br><span class="muted small">14 уроків за «Česky raz dva»</span></span><span class="muted">›</span></button>
     <h3 class="section">Вільне тренування</h3>
     <p class="hint" style="text-align:left;margin:-4px 16px 10px;padding:0">Практика без впливу на розклад повторень: тренуй скільки хочеш.</p>
     <div class="weeks">${weeks}</div>
@@ -147,6 +149,7 @@ function showHome() {
   document.getElementById("settings").onclick = showSettings;
   document.getElementById("abc").onclick = () => showAlphabet({ render, back: showHome });
   document.getElementById("topics").onclick = () => showTopic("months");
+  document.getElementById("exercises").onclick = () => showExercises({ render, back: showHome, be: S.be, user: S.user });
 }
 
 function showSettings() {

@@ -45,6 +45,8 @@ js/alphabet.js        довідник «Чеська абетка»
 js/topics.js          місяці, дні тижня, числа
 js/pronounce.js       режим «Вимова»: розпізнавання мовлення + запис і порівняння
 data/sentences.json   100 коротких речень для вимови
+js/exercises.js       вправи з граматики за «Česky raz dva»
+data/exercises.json   14 уроків, 50 наборів (генерується з tools/exercises_src.py)
 data/alphabet.json    42 літери: назва, звук, приклад
 js/srs.js             розумне повторення (сходинки 0–5: 0, 1, 3, 7, 16, 35 днів)
 js/backend.js         Firebase або демо-режим
