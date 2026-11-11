@@ -291,3 +291,7 @@ select { font: inherit; padding: 4px 8px; border-radius: 8px; }
 .chip-w.in { background: var(--blue); color: #fff; border-color: var(--blue); }
 .chip-w.ghost { opacity: .25; cursor: default; }
 .sticky-letters { position: sticky; bottom: 8px; background: var(--bg); padding: 6px; border-radius: 12px; box-shadow: var(--shadow); z-index: 3; }
+.g-h { margin: 16px 0 6px; font-size: 16px; color: var(--fg); }
+.mark-body .g-h:first-child { margin-top: 4px; }
+.ex-tbl td:first-child { white-space: normal; width: 52%; }
+.ex-tbl .cz { color: var(--blue); }
